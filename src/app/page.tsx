@@ -150,7 +150,9 @@ const Home = (): JSX.Element => {
 
   const handleCostChange = (day: DayName, value: string): void => {
     if (costs) {
-      setCosts({ ...costs, [day]: Number(value) });
+      console.log("value", value);
+      console.log("Number", Number(value.charAt(0) == "0" ? value.substring(1,value.length) : value));
+      setCosts({ ...costs, [day]: Number(value.charAt(0) == "0" ? value.substring(1,value.length) : value) });
     }
   };
 
@@ -229,7 +231,7 @@ const Home = (): JSX.Element => {
               </label>
 
               {customCostsEnabled && costs ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-2 gap-3 mt-4">
                   {(Object.keys(costs) as DayName[]).map((day) => (
                     <div key={day} className="flex flex-col">
                       <label className="text-sm font-medium capitalize mb-1">{day}</label>
@@ -237,7 +239,17 @@ const Home = (): JSX.Element => {
                         <input
                           type="number"
                           value={costs[day]}
-                          onChange={(e) => handleCostChange(day, e.target.value)}
+                          onChange={(e) => {handleCostChange(day, e.target.value)}}
+                          onFocus={(e) => {
+                            if (e.target.value === "0") {
+                              e.target.value = "";
+                            }
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value === "") {
+                              handleCostChange(day, "0");
+                            }
+                          }}
                           className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 outline-none transition-all"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm pointer-events-none">
@@ -256,6 +268,16 @@ const Home = (): JSX.Element => {
                         type="number"
                         value={defaultWorkdayCost}
                         onChange={(e) => setDefaultWorkdayCost(Number(e.target.value))}
+                        onFocus={(e) => {
+                          if (e.target.value === "0") {
+                            e.target.value = "";
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === "") {
+                            setDefaultWorkdayCost(Number(e.target.value))
+                          }
+                        }}
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 outline-none transition-all"
                       />
                       <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
@@ -270,6 +292,16 @@ const Home = (): JSX.Element => {
                         type="number"
                         value={defaultWeekendCost}
                         onChange={(e) => setDefaultWeekendCost(Number(e.target.value))}
+                        onFocus={(e) => {
+                          if (e.target.value === "0") {
+                            e.target.value = "";
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === "") {
+                            setDefaultWeekendCost(Number(e.target.value))
+                          }
+                        }}
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 outline-none transition-all"
                       />
                       <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
