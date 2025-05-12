@@ -1,0 +1,1201 @@
+// import React, { useState, useEffect } from 'react';
+// import {
+//     StyleSheet,
+//     View,
+//     Text,
+//     TouchableOpacity,
+//     ScrollView,
+//     SafeAreaView,
+//     Platform,
+//     StatusBar,
+//     TextInput,
+//     Switch,
+//     FlatList,
+//     Alert,
+//     Dimensions,
+//     Animated
+// } from 'react-native';
+// import { Calendar } from 'react-native-calendars';
+// import { MaterialIcons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
+// import { format, eachDayOfInterval, getDay, startOfWeek, isSameWeek } from 'date-fns';
+// import { fr } from 'date-fns/locale';
+// import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// import { GestureHandlerRootView } from 'react-native-gesture-handler';
+// import DateTimePicker from '@react-native-community/datetimepicker';
+// import { Appearance } from 'react-native';
+
+// // Types
+// const daysMap = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+// const defaultCosts = {
+//     lundi: 0,
+//     mardi: 0,
+//     mercredi: 0,
+//     jeudi: 0,
+//     vendredi: 0,
+//     samedi: 0,
+//     dimanche: 0,
+// };
+
+// // Liste des devises disponibles
+// const currencies = [
+//     { code: 'XOF', name: 'Franc CFA BCEAO', symbol: 'FCFA' },
+//     { code: 'EUR', name: 'Euro', symbol: '€' },
+//     { code: 'USD', name: 'Dollar américain', symbol: '$' },
+//     { code: 'GBP', name: 'Livre sterling', symbol: '£' },
+//     { code: 'CAD', name: 'Dollar canadien', symbol: 'CA$' },
+//     { code: 'MAD', name: 'Dirham marocain', symbol: 'DH' },
+//     { code: 'DZD', name: 'Dinar algérien', symbol: 'DA' },
+//     { code: 'XAF', name: 'Franc CFA BEAC', symbol: 'FCFA' },
+// ];
+
+// const App = () => {
+//     const insets = useSafeAreaInsets();
+//     const [theme, setTheme] = useState(Appearance.getColorScheme() || 'light');
+
+//     // États de l'application
+//     const [startDate, setStartDate] = useState(new Date());
+//     const [endDate, setEndDate] = useState(new Date());
+//     const [costs, setCosts] = useState(defaultCosts);
+//     const [customCostsEnabled, setCustomCostsEnabled] = useState(false);
+//     const [defaultWorkdayCost, setDefaultWorkdayCost] = useState(0);
+//     const [defaultWeekendCost, setDefaultWeekendCost] = useState(0);
+//     const [currency, setCurrency] = useState(currencies[0]);
+//     const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
+//     const [result, setResult] = useState(null);
+//     const [savedCalculations, setSavedCalculations] = useState([]);
+//     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+//     const [showDatePicker, setShowDatePicker] = useState(false);
+//     const [datePickerMode, setDatePickerMode] = useState('start'); // 'start' ou 'end'
+
+//     // Animation pour le drawer
+//     const drawerAnimation = useState(new Animated.Value(-300))[0];
+
+//     // Charger les calculs sauvegardés au démarrage
+//     useEffect(() => {
+//         loadSavedCalculations();
+
+//         // Écouter les changements de thème
+//         const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+//             setTheme(colorScheme);
+//         });
+
+//         return () => subscription.remove();
+//     }, []);
+
+//     // Charger les calculs sauvegardés depuis AsyncStorage
+//     const loadSavedCalculations = async () => {
+//         try {
+//             const savedData = await AsyncStorage.getItem('savedCalculations');
+//             if (savedData) {
+//                 // Convertir les chaînes de date en objets Date
+//                 const parsedData = JSON.parse(savedData).map(item => ({
+//                     ...item,
+//                     startDate: new Date(item.startDate),
+//                     endDate: new Date(item.endDate),
+//                     timestamp: new Date(item.timestamp)
+//                 }));
+//                 setSavedCalculations(parsedData);
+//             }
+//         } catch (error) {
+//             console.error('Erreur lors du chargement des calculs:', error);
+//         }
+//     };
+
+//     // Sauvegarder un nouveau calcul
+//     const saveCalculation = async () => {
+//         if (!result) return;
+
+//         const newCalculation = {
+//             id: Date.now().toString(),
+//             startDate,
+//             endDate,
+//             costs: customCostsEnabled ? costs : { workday: defaultWorkdayCost, weekend: defaultWeekendCost },
+//             customCostsEnabled,
+//             currency,
+//             result,
+//             timestamp: new Date()
+//         };
+
+//         const updatedCalculations = [newCalculation, ...savedCalculations];
+//         setSavedCalculations(updatedCalculations);
+
+//         try {
+//             await AsyncStorage.setItem('savedCalculations', JSON.stringify(updatedCalculations));
+//         } catch (error) {
+//             console.error('Erreur lors de la sauvegarde du calcul:', error);
+//         }
+//     };
+
+//     // Supprimer un calcul
+//     const deleteCalculation = async (id) => {
+//         Alert.alert(
+//             "Confirmation",
+//             "Voulez-vous vraiment supprimer ce calcul ?",
+//             [
+//                 { text: "Annuler", style: "cancel" },
+//                 {
+//                     text: "Supprimer",
+//                     style: "destructive",
+//                     onPress: async () => {
+//                         const updatedCalculations = savedCalculations.filter(calc => calc.id !== id);
+//                         setSavedCalculations(updatedCalculations);
+//                         try {
+//                             await AsyncStorage.setItem('savedCalculations', JSON.stringify(updatedCalculations));
+//                         } catch (error) {
+//                             console.error('Erreur lors de la suppression du calcul:', error);
+//                         }
+//                     }
+//                 }
+//             ]
+//         );
+//     };
+
+//     // Charger un calcul précédent
+//     const loadCalculation = (calculation) => {
+//         setStartDate(new Date(calculation.startDate));
+//         setEndDate(new Date(calculation.endDate));
+//         setCustomCostsEnabled(calculation.customCostsEnabled);
+//         setCurrency(calculation.currency);
+
+//         if (calculation.customCostsEnabled) {
+//             setCosts(calculation.costs);
+//         } else {
+//             setDefaultWorkdayCost(calculation.costs.workday);
+//             setDefaultWeekendCost(calculation.costs.weekend);
+//         }
+
+//         setResult(calculation.result);
+//         toggleDrawer();
+//     };
+
+//     // Effectuer le calcul
+//     const calculate = () => {
+//         try {
+//             const days = eachDayOfInterval({
+//                 start: startDate,
+//                 end: endDate,
+//             });
+
+//             const counts = {
+//                 lundi: 0,
+//                 mardi: 0,
+//                 mercredi: 0,
+//                 jeudi: 0,
+//                 vendredi: 0,
+//                 samedi: 0,
+//                 dimanche: 0,
+//             };
+
+//             // Pour le calcul par semaine
+//             const weeks = new Map();
+//             let weekCounter = 0;
+//             let currentWeekStart = startOfWeek(startDate, { weekStartsOn: 1 }); // Commence le lundi
+
+//             days.forEach((day) => {
+//                 const dayIndex = getDay(day);
+//                 const dayName = daysMap[dayIndex];
+//                 counts[dayName] += 1;
+
+//                 // Déterminer la semaine pour ce jour
+//                 if (!isSameWeek(day, currentWeekStart, { weekStartsOn: 1 })) {
+//                     weekCounter++;
+//                     currentWeekStart = startOfWeek(day, { weekStartsOn: 1 });
+//                 }
+
+//                 // Ajouter le jour à la semaine correspondante
+//                 if (!weeks.has(weekCounter)) {
+//                     weeks.set(weekCounter, { days: [], total: 0 });
+//                 }
+//                 const weekData = weeks.get(weekCounter);
+//                 weekData.days.push(day);
+
+//                 // Calculer le coût pour ce jour et l'ajouter au total de la semaine
+//                 const cost = customCostsEnabled
+//                     ? costs[dayName]
+//                     : ['samedi', 'dimanche'].includes(dayName)
+//                         ? defaultWeekendCost
+//                         : defaultWorkdayCost;
+
+//                 weekData.total += cost;
+//             });
+
+//             // Données par jour
+//             const data = Object.entries(counts).map(([day, count]) => {
+//                 const cost = customCostsEnabled
+//                     ? costs[day]
+//                     : ['samedi', 'dimanche'].includes(day)
+//                         ? defaultWeekendCost
+//                         : defaultWorkdayCost;
+
+//                 return {
+//                     day,
+//                     count,
+//                     cost,
+//                     total: cost * count,
+//                 };
+//             });
+
+//             // Données par semaine
+//             const weekData = Array.from(weeks.entries()).map(([weekNumber, weekInfo]) => {
+//                 const weekDays = weekInfo.days;
+//                 if (weekDays.length === 0) return null;
+
+//                 const startDate = weekDays[0];
+//                 const endDate = weekDays[weekDays.length - 1];
+//                 const dailyCosts = weekDays.map(day => {
+//                     const dayIndex = getDay(day);
+//                     const dayName = daysMap[dayIndex];
+//                     return customCostsEnabled
+//                         ? costs[dayName]
+//                         : ['samedi', 'dimanche'].includes(dayName)
+//                             ? defaultWeekendCost
+//                             : defaultWorkdayCost;
+//                 });
+
+//                 const total = dailyCosts.reduce((sum, cost) => sum + cost, 0);
+//                 const avgCost = weekDays.length > 0 ? total / weekDays.length : 0;
+
+//                 return {
+//                     weekNumber: weekNumber + 1, // Pour affichage humain (commencer à 1)
+//                     startDate,
+//                     endDate,
+//                     count: weekDays.length,
+//                     cost: avgCost,
+//                     total,
+//                 };
+//             }).filter(Boolean);
+
+//             const totalCost = data.reduce((sum, d) => sum + d.total, 0);
+//             const totalDays = days.length;
+
+//             const calculationResult = {
+//                 data,
+//                 weekData,
+//                 total: totalCost,
+//                 totalDays,
+//                 totalWeeks: weekData.length,
+//             };
+
+//             setResult(calculationResult);
+//             return calculationResult;
+//         } catch (error) {
+//             console.error("Erreur lors du calcul:", error);
+//             Alert.alert("Erreur", "Une erreur est survenue lors du calcul.");
+//             return null;
+//         }
+//     };
+
+//     // Effectuer le calcul et sauvegarder
+//     const calculateAndSave = () => {
+//         const calculationResult = calculate();
+//         if (calculationResult) {
+//             saveCalculation();
+//         }
+//     };
+
+//     const handleCostChange = (day, value) => {
+//         const numValue = parseFloat(value) || 0;
+//         setCosts(prevCosts => ({ ...prevCosts, [day]: numValue }));
+//     };
+
+//     const toggleDrawer = () => {
+//         const toValue = isDrawerOpen ? -300 : 0;
+//         Animated.timing(drawerAnimation, {
+//             toValue,
+//             duration: 300,
+//             useNativeDriver: false
+//         }).start();
+//         setIsDrawerOpen(!isDrawerOpen);
+//     };
+
+//     const toggleDatePicker = (mode) => {
+//         setDatePickerMode(mode);
+//         setShowDatePicker(prev => !prev);
+//     };
+
+//     const handleDateChange = (event, selectedDate) => {
+//         if (Platform.OS === 'android') {
+//             setShowDatePicker(false);
+//         }
+
+//         if (selectedDate) {
+//             if (datePickerMode === 'start') {
+//                 setStartDate(selectedDate);
+//                 if (selectedDate > endDate) {
+//                     setEndDate(selectedDate);
+//                 }
+//             } else {
+//                 setEndDate(selectedDate);
+//                 if (selectedDate < startDate) {
+//                     setStartDate(selectedDate);
+//                 }
+//             }
+//         }
+//     };
+
+//     const handleCurrencyChange = (curr) => {
+//         setCurrency(curr);
+//         setCurrencyDropdownOpen(false);
+//     };
+
+//     // Styles conditionnels basés sur le thème
+//     const isDark = theme === 'dark';
+
+//     const themeStyles = {
+//         background: isDark ? '#121212' : '#f5f5f5',
+//         card: isDark ? '#1e1e1e' : '#ffffff',
+//         text: isDark ? '#e1e1e1' : '#333333',
+//         secondaryText: isDark ? '#a0a0a0' : '#666666',
+//         border: isDark ? '#333333' : '#e0e0e0',
+//         primary: isDark ? '#7c4dff' : '#6366f1',
+//         primaryLight: isDark ? '#33275a' : '#eef2ff',
+//         highlight: isDark ? '#33275a' : '#f0f7ff',
+//     };
+
+//     const markedDates = {};
+
+//     // Marquer les dates sélectionnées
+//     if (startDate && endDate) {
+//         const start = format(startDate, 'yyyy-MM-dd');
+//         const end = format(endDate, 'yyyy-MM-dd');
+
+//         // Date de début
+//         markedDates[start] = {
+//             startingDay: true,
+//             color: themeStyles.primary,
+//             textColor: 'white'
+//         };
+
+//         // Date de fin (si différente du début)
+//         if (start !== end) {
+//             markedDates[end] = {
+//                 endingDay: true,
+//                 color: themeStyles.primary,
+//                 textColor: 'white'
+//             };
+
+//             // Dates intermédiaires
+//             const days = eachDayOfInterval({
+//                 start: new Date(startDate.getTime() + 24 * 60 * 60 * 1000),
+//                 end: new Date(endDate.getTime() - 24 * 60 * 60 * 1000)
+//             });
+
+//             days.forEach(day => {
+//                 const dateString = format(day, 'yyyy-MM-dd');
+//                 markedDates[dateString] = {
+//                     color: themeStyles.primaryLight,
+//                     textColor: themeStyles.primary
+//                 };
+//             });
+//         }
+//     }
+
+//     return (
+//         <GestureHandlerRootView style={{ flex: 1 }}>
+//             <SafeAreaView style={[styles.container, { backgroundColor: themeStyles.background }]}>
+//                 <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+
+//                 {/* Header */}
+//                 <View style={[styles.header, { borderBottomColor: themeStyles.border }]}>
+//                     <TouchableOpacity onPress={toggleDrawer} style={styles.menuButton}>
+//                         <Feather name="menu" size={24} color={themeStyles.primary} />
+//                     </TouchableOpacity>
+//                     <Text style={[styles.headerTitle, { color: themeStyles.primary }]}>
+//                         Calculateur de dépenses
+//                     </Text>
+//                     <TouchableOpacity
+//                         style={[styles.themeToggle, { backgroundColor: themeStyles.primaryLight }]}
+//                         onPress={() => setTheme(isDark ? 'light' : 'dark')}
+//                     >
+//                         {isDark ? (
+//                             <Feather name="sun" size={20} color={themeStyles.primary} />
+//                         ) : (
+//                             <Feather name="moon" size={20} color={themeStyles.primary} />
+//                         )}
+//                     </TouchableOpacity>
+//                 </View>
+
+//                 <ScrollView style={styles.content}>
+//                     {/* Date Selection Panel */}
+//                     <View style={[styles.card, { backgroundColor: themeStyles.card }]}>
+//                         <View style={styles.cardHeader}>
+//                             <Feather name="calendar" size={20} color={themeStyles.primary} />
+//                             <Text style={[styles.cardTitle, { color: themeStyles.text }]}>Sélection de dates</Text>
+//                         </View>
+
+//                         <View style={styles.dateSelectionContainer}>
+//                             <View style={styles.dateInputRow}>
+//                                 <Text style={[styles.dateLabel, { color: themeStyles.text }]}>Date de début:</Text>
+//                                 <TouchableOpacity
+//                                     style={[styles.dateButton, { backgroundColor: themeStyles.primaryLight }]}
+//                                     onPress={() => toggleDatePicker('start')}
+//                                 >
+//                                     <Text style={[styles.dateButtonText, { color: themeStyles.primary }]}>
+//                                         {format(startDate, 'dd/MM/yyyy')}
+//                                     </Text>
+//                                     <Feather name="calendar" size={16} color={themeStyles.primary} />
+//                                 </TouchableOpacity>
+//                             </View>
+
+//                             <View style={styles.dateInputRow}>
+//                                 <Text style={[styles.dateLabel, { color: themeStyles.text }]}>Date de fin:</Text>
+//                                 <TouchableOpacity
+//                                     style={[styles.dateButton, { backgroundColor: themeStyles.primaryLight }]}
+//                                     onPress={() => toggleDatePicker('end')}
+//                                 >
+//                                     <Text style={[styles.dateButtonText, { color: themeStyles.primary }]}>
+//                                         {format(endDate, 'dd/MM/yyyy')}
+//                                     </Text>
+//                                     <Feather name="calendar" size={16} color={themeStyles.primary} />
+//                                 </TouchableOpacity>
+//                             </View>
+//                         </View>
+
+//                         {/* Calendrier pour visualiser la période */}
+//                         <Calendar
+//                             markingType={'period'}
+//                             markedDates={markedDates}
+//                             theme={{
+//                                 calendarBackground: themeStyles.card,
+//                                 textSectionTitleColor: themeStyles.primary,
+//                                 selectedDayBackgroundColor: themeStyles.primary,
+//                                 selectedDayTextColor: '#ffffff',
+//                                 todayTextColor: themeStyles.primary,
+//                                 dayTextColor: themeStyles.text,
+//                                 textDisabledColor: themeStyles.secondaryText,
+//                                 monthTextColor: themeStyles.text,
+//                                 indicatorColor: themeStyles.primary,
+//                                 arrowColor: themeStyles.primary,
+//                             }}
+//                         />
+
+//                         {/* Date Picker Modal (pour iOS) */}
+//                         {showDatePicker && (
+//                             <DateTimePicker
+//                                 value={datePickerMode === 'start' ? startDate : endDate}
+//                                 mode="date"
+//                                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+//                                 onChange={handleDateChange}
+//                             />
+//                         )}
+//                     </View>
+
+//                     {/* Cost Configuration Panel */}
+//                     <View style={[styles.card, { backgroundColor: themeStyles.card }]}>
+//                         <View style={styles.cardHeaderWithAction}>
+//                             <View style={styles.cardHeader}>
+//                                 <MaterialIcons name="attach-money" size={20} color={themeStyles.primary} />
+//                                 <Text style={[styles.cardTitle, { color: themeStyles.text }]}>Configuration des coûts</Text>
+//                             </View>
+
+//                             {/* Currency Selector */}
+//                             <TouchableOpacity
+//                                 style={[styles.currencyButton, { backgroundColor: themeStyles.primaryLight }]}
+//                                 onPress={() => setCurrencyDropdownOpen(!currencyDropdownOpen)}
+//                             >
+//                                 <Text style={{ color: themeStyles.primary }}>{currency.symbol}</Text>
+//                                 <MaterialIcons name="arrow-drop-down" size={20} color={themeStyles.primary} />
+//                             </TouchableOpacity>
+//                         </View>
+
+//                         {/* Currency Dropdown */}
+//                         {currencyDropdownOpen && (
+//                             <View style={[styles.currencyDropdown, { backgroundColor: themeStyles.card, borderColor: themeStyles.border }]}>
+//                                 <FlatList
+//                                     data={currencies}
+//                                     keyExtractor={(item) => item.code}
+//                                     renderItem={({ item }) => (
+//                                         <TouchableOpacity
+//                                             style={styles.currencyItem}
+//                                             onPress={() => handleCurrencyChange(item)}
+//                                         >
+//                                             <Text style={{ color: themeStyles.text }}>{item.name}</Text>
+//                                             <Text style={{ color: themeStyles.secondaryText }}>{item.symbol}</Text>
+//                                         </TouchableOpacity>
+//                                     )}
+//                                 />
+//                             </View>
+//                         )}
+
+//                         {/* Custom Costs Toggle */}
+//                         <View style={styles.switchContainer}>
+//                             <Switch
+//                                 value={customCostsEnabled}
+//                                 onValueChange={setCustomCostsEnabled}
+//                                 trackColor={{ false: "#767577", true: themeStyles.primaryLight }}
+//                                 thumbColor={customCostsEnabled ? themeStyles.primary : "#f4f3f4"}
+//                             />
+//                             <Text style={[styles.switchLabel, { color: themeStyles.text }]}>
+//                                 Utiliser des coûts personnalisés par jour
+//                             </Text>
+//                         </View>
+
+//                         {customCostsEnabled ? (
+//                             <View style={styles.customCostsContainer}>
+//                                 {Object.keys(costs).map((day) => (
+//                                     <View key={day} style={styles.costInputContainer}>
+//                                         <Text style={[styles.dayLabel, { color: themeStyles.text }]}>
+//                                             {day.charAt(0).toUpperCase() + day.slice(1)}
+//                                         </Text>
+//                                         <View style={[styles.inputContainer, { borderColor: themeStyles.border, backgroundColor: isDark ? '#2a2a2a' : '#f9f9f9' }]}>
+//                                             <TextInput
+//                                                 style={[styles.input, { color: themeStyles.text }]}
+//                                                 value={costs[day].toString()}
+//                                                 onChangeText={(value) => handleCostChange(day, value)}
+//                                                 keyboardType="numeric"
+//                                                 placeholderTextColor={themeStyles.secondaryText}
+//                                             />
+//                                             <Text style={[styles.currencySymbol, { color: themeStyles.secondaryText }]}>
+//                                                 {currency.symbol}
+//                                             </Text>
+//                                         </View>
+//                                     </View>
+//                                 ))}
+//                             </View>
+//                         ) : (
+//                             <View style={styles.defaultCostsContainer}>
+//                                 <View style={styles.costInputFullWidth}>
+//                                     <Text style={[styles.costLabel, { color: themeStyles.text }]}>
+//                                         Coût pour les jours ouvrables (lundi à vendredi)
+//                                     </Text>
+//                                     <View style={[styles.inputContainer, { borderColor: themeStyles.border, backgroundColor: isDark ? '#2a2a2a' : '#f9f9f9' }]}>
+//                                         <TextInput
+//                                             style={[styles.input, { color: themeStyles.text }]}
+//                                             value={defaultWorkdayCost.toString()}
+//                                             onChangeText={(value) => setDefaultWorkdayCost(parseFloat(value) || 0)}
+//                                             keyboardType="numeric"
+//                                             placeholderTextColor={themeStyles.secondaryText}
+//                                         />
+//                                         <Text style={[styles.currencySymbol, { color: themeStyles.secondaryText }]}>
+//                                             {currency.symbol}
+//                                         </Text>
+//                                     </View>
+//                                 </View>
+
+//                                 <View style={styles.costInputFullWidth}>
+//                                     <Text style={[styles.costLabel, { color: themeStyles.text }]}>
+//                                         Coût pour le weekend (samedi et dimanche)
+//                                     </Text>
+//                                     <View style={[styles.inputContainer, { borderColor: themeStyles.border, backgroundColor: isDark ? '#2a2a2a' : '#f9f9f9' }]}>
+//                                         <TextInput
+//                                             style={[styles.input, { color: themeStyles.text }]}
+//                                             value={defaultWeekendCost.toString()}
+//                                             onChangeText={(value) => setDefaultWeekendCost(parseFloat(value) || 0)}
+//                                             keyboardType="numeric"
+//                                             placeholderTextColor={themeStyles.secondaryText}
+//                                         />
+//                                         <Text style={[styles.currencySymbol, { color: themeStyles.secondaryText }]}>
+//                                             {currency.symbol}
+//                                         </Text>
+//                                     </View>
+//                                 </View>
+//                             </View>
+//                         )}
+
+//                         {/* Calculate Button */}
+//                         <TouchableOpacity
+//                             style={[styles.calculateButton, { backgroundColor: themeStyles.primary }]}
+//                             onPress={calculateAndSave}
+//                         >
+//                             <Feather name="calculator" size={20} color="#ffffff" />
+//                             <Text style={styles.calculateButtonText}>Calculer et sauvegarder</Text>
+//                         </TouchableOpacity>
+//                     </View>
+
+//                     {/* Results tables */}
+//                     {result && (
+//                         <View style={styles.resultsContainer}>
+//                             {/* Table by day */}
+//                             <View style={[styles.card, { backgroundColor: themeStyles.card }]}>
+//                                 <View style={styles.resultHeader}>
+//                                     <Text style={[styles.resultTitle, { color: themeStyles.text }]}>
+//                                         Dépenses par jour du {format(startDate, 'dd/MM/yyyy')} au {format(endDate, 'dd/MM/yyyy')}
+//                                     </Text>
+//                                     <View style={[styles.badgePill, { backgroundColor: themeStyles.primaryLight }]}>
+//                                         <Text style={[styles.badgeText, { color: themeStyles.primary }]}>
+//                                             {result.totalDays} jour{result.totalDays > 1 ? 's' : ''}
+//                                         </Text>
+//                                     </View>
+//                                 </View>
+
+//                                 <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+//                                     <View>
+//                                         {/* Table Header */}
+//                                         <View style={styles.tableRow}>
+//                                             <View style={[styles.tableHeaderCell, styles.dayCell, { backgroundColor: themeStyles.highlight }]}>
+//                                                 <Text style={[styles.tableHeaderText, { color: themeStyles.text }]}>Jour</Text>
+//                                             </View>
+//                                             <View style={[styles.tableHeaderCell, styles.countCell, { backgroundColor: themeStyles.highlight }]}>
+//                                                 <Text style={[styles.tableHeaderText, { color: themeStyles.text }]}>Nb jours</Text>
+//                                             </View>
+//                                             <View style={[styles.tableHeaderCell, styles.amountCell, { backgroundColor: themeStyles.highlight }]}>
+//                                                 <Text style={[styles.tableHeaderText, { color: themeStyles.text }]}>Montant</Text>
+//                                             </View>
+//                                             <View style={[styles.tableHeaderCell, styles.totalCell, { backgroundColor: themeStyles.highlight }]}>
+//                                                 <Text style={[styles.tableHeaderText, { color: themeStyles.text }]}>Total</Text>
+//                                             </View>
+//                                         </View>
+
+//                                         {/* Table Body */}
+//                                         {result.data.map((row, index) => (
+//                                             <View
+//                                                 key={row.day}
+//                                                 style={[
+//                                                     styles.tableRow,
+//                                                     { backgroundColor: index % 2 === 0 ? themeStyles.card : themeStyles.highlight }
+//                                                 ]}
+//                                             >
+//                                                 <View style={[styles.tableCell, styles.dayCell]}>
+//                                                     <Text style={[styles.dayCellText, { color: themeStyles.text }]}>
+//                                                         {row.day.charAt(0).toUpperCase() + row.day.slice(1)}
+//                                                     </Text>
+//                                                 </View>
+//                                                 <View style={[styles.tableCell, styles.countCell]}>
+//                                                     <Text style={{ color: themeStyles.text }}>{row.count}</Text>
+//                                                 </View>
+//                                                 <View style={[styles.tableCell, styles.amountCell]}>
+//                                                     <Text style={{ color: themeStyles.text }}>
+//                                                         {row.cost.toLocaleString()} {currency.symbol}
+//                                                     </Text>
+//                                                 </View>
+//                                                 <View style={[styles.tableCell, styles.totalCell]}>
+//                                                     <Text style={[styles.totalCellText, { color: themeStyles.primary }]}>
+//                                                         {row.total.toLocaleString()} {currency.symbol}
+//                                                     </Text>
+//                                                 </View>
+//                                             </View>
+//                                         ))}
+
+//                                         {/* Table Footer */}
+//                                         <View style={[styles.tableRow, styles.tableFooter, { backgroundColor: themeStyles.primaryLight }]}>
+//                                             <View style={[styles.tableCell, { flex: 3 }]}>
+//                                                 <Text style={[styles.totalRowText, { color: themeStyles.primary }]}>Total</Text>
+//                                             </View>
+//                                             <View style={[styles.tableCell, styles.totalCell]}>
+//                                                 <Text style={[styles.grandTotalText, { color: themeStyles.primary }]}>
+//                                                     {result.total.toLocaleString()} {currency.symbol}
+//                                                 </Text>
+//                                             </View>
+//                                         </View>
+//                                     </View>
+//                                 </ScrollView>
+//                             </View>
+
+//                             {/* Table by Week */}
+//                             <View style={[styles.card, { backgroundColor: themeStyles.card }]}>
+//                                 <View style={styles.resultHeader}>
+//                                     <Text style={[styles.resultTitle, { color: themeStyles.text }]}>
+//                                         Dépenses par semaine
+//                                     </Text>
+//                                     <View style={[styles.badgePill, { backgroundColor: themeStyles.primaryLight }]}>
+//                                         <Text style={[styles.badgeText, { color: themeStyles.primary }]}>
+//                                             {result.totalWeeks} semaine{result.totalWeeks > 1 ? 's' : ''}
+//                                         </Text>
+//                                     </View>
+//                                 </View>
+
+//                                 <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+//                                     <View>
+//                                         {/* Table Header */}
+//                                         <View style={styles.tableRow}>
+//                                             <View style={[styles.tableHeaderCell, styles.weekCell, { backgroundColor: themeStyles.highlight }]}>
+//                                                 <Text style={[styles.tableHeaderText, { color: themeStyles.text }]}>Semaine</Text>
+//                                             </View>
+//                                             <View style={[styles.tableHeaderCell, styles.dateRangeCell, { backgroundColor: themeStyles.highlight }]}>
+//                                                 <Text style={[styles.tableHeaderText, { color: themeStyles.text }]}>Période</Text>
+//                                             </View>
+//                                             <View style={[styles.tableHeaderCell, styles.countCell, { backgroundColor: themeStyles.highlight }]}>
+//                                                 <Text style={[styles.tableHeaderText, { color: themeStyles.text }]}>Jours</Text>
+//                                             </View>
+//                                             <View style={[styles.tableHeaderCell, styles.totalCell, { backgroundColor: themeStyles.highlight }]}>
+//                                                 <Text style={[styles.tableHeaderText, { color: themeStyles.text }]}>Total</Text>
+//                                             </View>
+//                                         </View>
+
+//                                         {/* Table Body */}
+//                                         {result.weekData.map((week, index) => (
+//                                             <View
+//                                                 key={week.weekNumber}
+//                                                 style={[
+//                                                     styles.tableRow,
+//                                                     { backgroundColor: index % 2 === 0 ? themeStyles.card : themeStyles.highlight }
+//                                                 ]}
+//                                             >
+//                                                 <View style={[styles.tableCell, styles.weekCell]}>
+//                                                     <Text style={{ color: themeStyles.text }}>S{week.weekNumber}</Text>
+//                                                 </View>
+//                                                 <View style={[styles.tableCell, styles.dateRangeCell]}>
+//                                                     <Text style={{ color: themeStyles.text }}>
+//                                                         {format(week.startDate, 'dd/MM')} - {format(week.endDate, 'dd/MM')}
+//                                                     </Text>
+//                                                 </View>
+//                                                 <View style={[styles.tableCell, styles.countCell]}>
+//                                                     <Text style={{ color: themeStyles.text }}>{week.count}</Text>
+//                                                 </View>
+//                                                 <View style={[styles.tableCell, styles.totalCell]}>
+//                                                     <Text style={[styles.totalCellText, { color: themeStyles.primary }]}>
+//                                                         {week.total.toLocaleString()} {currency.symbol}
+//                                                     </Text>
+//                                                 </View>
+//                                             </View>
+//                                         ))}
+
+//                                         {/* Table Footer */}
+//                                         <View style={[styles.tableRow, styles.tableFooter, { backgroundColor: themeStyles.primaryLight }]}>
+//                                             <View style={[styles.tableCell, { flex: 3 }]}>
+//                                                 <Text style={[styles.totalRowText, { color: themeStyles.primary }]}>Total</Text>
+//                                             </View>
+//                                             <View style={[styles.tableCell, styles.totalCell]}>
+//                                                 <Text style={[styles.grandTotalText, { color: themeStyles.primary }]}>
+//                                                     {result.total.toLocaleString()} {currency.symbol}
+//                                                 </Text>
+//                                             </View>
+//                                         </View>
+//                                     </View>
+//                                 </ScrollView>
+//                             </View>
+
+//                             {/* Summary Card */}
+//                             <View style={[styles.card, styles.summaryCard, { backgroundColor: themeStyles.primary }]}>
+//                                 <View style={styles.summaryContent}>
+//                                     <View style={styles.summaryTextContainer}>
+//                                         <Text style={styles.summaryTitle}>Total des dépenses</Text>
+//                                         <Text style={styles.summaryDescription}>
+//                                             Pour {result.totalDays} jour{result.totalDays > 1 ? 's' : ''}
+//                                             sur {result.totalWeeks} semaine{result.totalWeeks > 1 ? 's' : ''}
+//                                         </Text>
+//                                     </View>
+//                                     <Text style={styles.summaryAmount}>
+//                                         {result.total.toLocaleString()} {currency.symbol}
+//                                     </Text>
+//                                 </View>
+//                                 <TouchableOpacity
+//                                     style={styles.shareButton}
+//                                     onPress={() => {
+//                                         /* Fonctionnalité de partage à implémenter */
+//                                         Alert.alert("Partage", "Fonctionnalité de partage à venir dans une future mise à jour.");
+//                                     }}
+//                                 >
+//                                     <Feather name="share-2" size={20} color="#ffffff" />
+//                                     <Text style={styles.shareButtonText}>Partager</Text>
+//                                 </TouchableOpacity>
+//                             </View>
+//                         </View>
+//                     )}
+//                 </ScrollView>
+
+//                 {/* Drawer for saved calculations */}
+//                 <Animated.View
+//                     style={[
+//                         styles.drawer,
+//                         {
+//                             left: drawerAnimation,
+//                             backgroundColor: themeStyles.card,
+//                             borderRightColor: themeStyles.border,
+//                             paddingTop: insets.top,
+//                         }
+//                     ]}
+//                 >
+//                     <View style={styles.drawerHeader}>
+//                         <Text style={[styles.drawerTitle, { color: themeStyles.text }]}>Calculs sauvegardés</Text>
+//                         <TouchableOpacity onPress={toggleDrawer}>
+//                             <Feather name="x" size={24} color={themeStyles.text} />
+//                         </TouchableOpacity>
+//                     </View>
+
+//                     {savedCalculations.length === 0 ? (
+//                         <View style={styles.emptyStateContainer}>
+//                             <MaterialCommunityIcons name="history" size={48} color={themeStyles.secondaryText} />
+//                             <Text style={[styles.emptyStateText, { color: themeStyles.secondaryText }]}>
+//                                 Aucun calcul sauvegardé
+//                             </Text>
+//                         </View>
+//                     ) : (
+//                         <FlatList
+//                             data={savedCalculations}
+//                             keyExtractor={item => item.id}
+//                             renderItem={({ item }) => (
+//                                 <TouchableOpacity
+//                                     style={[styles.savedCalculationItem, { borderBottomColor: themeStyles.border }]}
+//                                     onPress={() => loadCalculation(item)}
+//                                 >
+//                                     <View style={styles.savedCalcMain}>
+//                                         <Text style={[styles.savedCalcDate, { color: themeStyles.text }]}>
+//                                             {format(item.startDate, 'dd/MM/yyyy')} - {format(item.endDate, 'dd/MM/yyyy')}
+//                                         </Text>
+//                                         <Text style={[styles.savedCalcAmount, { color: themeStyles.primary }]}>
+//                                             {item.result.total.toLocaleString()} {item.currency.symbol}
+//                                         </Text>
+//                                         <Text style={[styles.savedCalcDetails, { color: themeStyles.secondaryText }]}>
+//                                             {item.result.totalDays} jours • {format(item.timestamp, 'dd/MM HH:mm')}
+//                                         </Text>
+//                                     </View>
+//                                     <TouchableOpacity
+//                                         style={styles.deleteButton}
+//                                         onPress={() => deleteCalculation(item.id)}
+//                                     >
+//                                         <Feather name="trash-2" size={20} color="#ff4d4f" />
+//                                     </TouchableOpacity>
+//                                 </TouchableOpacity>
+//                             )}
+//                         />
+//                     )}
+//                 </Animated.View>
+//             </SafeAreaView>
+//         </GestureHandlerRootView>
+//     );
+// };
+
+// const styles = StyleSheet.create({
+//     container: {
+//         flex: 1,
+//     },
+//     content: {
+//         flex: 1,
+//         padding: 16,
+//     },
+//     header: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'space-between',
+//         paddingHorizontal: 16,
+//         paddingVertical: 12,
+//         borderBottomWidth: 1,
+//     },
+//     headerTitle: {
+//         fontSize: 18,
+//         fontWeight: 'bold',
+//     },
+//     menuButton: {
+//         padding: 4,
+//     },
+//     themeToggle: {
+//         padding: 6,
+//         borderRadius: 8,
+//     },
+//     card: {
+//         borderRadius: 12,
+//         padding: 16,
+//         marginBottom: 16,
+//         shadowColor: "#000",
+//         shadowOffset: {
+//             width: 0,
+//             height: 2,
+//         },
+//         shadowOpacity: 0.1,
+//         shadowRadius: 3.84,
+//         elevation: 5,
+//     },
+//     cardHeader: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         marginBottom: 16,
+//     },
+//     cardHeaderWithAction: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'space-between',
+//         marginBottom: 16,
+//     },
+//     cardTitle: {
+//         fontSize: 16,
+//         fontWeight: '600',
+//         marginLeft: 8,
+//     },
+//     dateSelectionContainer: {
+//         marginBottom: 16,
+//     },
+//     dateInputRow: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'space-between',
+//         marginBottom: 12,
+//     },
+//     dateLabel: {
+//         flex: 1,
+//         fontSize: 15,
+//     },
+//     dateButton: {
+//         flex: 1,
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'space-between',
+//         padding: 10,
+//         borderRadius: 8,
+//     },
+//     dateButtonText: {
+//         fontSize: 15,
+//         fontWeight: '500',
+//     },
+//     switchContainer: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         marginBottom: 16,
+//     },
+//     switchLabel: {
+//         marginLeft: 8,
+//         fontSize: 15,
+//     },
+//     customCostsContainer: {
+//         marginBottom: 16,
+//     },
+//     costInputContainer: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'space-between',
+//         marginBottom: 12,
+//     },
+//     dayLabel: {
+//         width: 100,
+//         fontSize: 15,
+//     },
+//     defaultCostsContainer: {
+//         marginBottom: 16,
+//     },
+//     costInputFullWidth: {
+//         marginBottom: 12,
+//     },
+//     costLabel: {
+//         marginBottom: 8,
+//         fontSize: 15,
+//     },
+//     inputContainer: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         borderWidth: 1,
+//         borderRadius: 8,
+//         paddingHorizontal: 12,
+//         height: 44,
+//     },
+//     input: {
+//         flex: 1,
+//         height: '100%',
+//         fontSize: 15,
+//     },
+//     currencySymbol: {
+//         fontSize: 15,
+//         fontWeight: '500',
+//         paddingLeft: 8,
+//     },
+//     calculateButton: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'center',
+//         padding: 14,
+//         borderRadius: 8,
+//     },
+//     calculateButtonText: {
+//         color: '#ffffff',
+//         fontSize: 16,
+//         fontWeight: '600',
+//         marginLeft: 8,
+//     },
+//     resultsContainer: {
+//         marginBottom: 16,
+//     },
+//     resultHeader: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'space-between',
+//         marginBottom: 12,
+//     },
+//     resultTitle: {
+//         fontSize: 15,
+//         fontWeight: '600',
+//     },
+//     badgePill: {
+//         paddingHorizontal: 10,
+//         paddingVertical: 4,
+//         borderRadius: 12,
+//     },
+//     badgeText: {
+//         fontSize: 13,
+//         fontWeight: '500',
+//     },
+//     tableRow: {
+//         flexDirection: 'row',
+//     },
+//     tableHeaderCell: {
+//         padding: 10,
+//         borderBottomWidth: 1,
+//         borderBottomColor: 'rgba(0,0,0,0.1)',
+//     },
+//     tableHeaderText: {
+//         fontWeight: '600',
+//         fontSize: 14,
+//     },
+//     tableCell: {
+//         padding: 10,
+//         justifyContent: 'center',
+//     },
+//     dayCell: {
+//         width: 100,
+//     },
+//     weekCell: {
+//         width: 80,
+//     },
+//     dateRangeCell: {
+//         width: 120,
+//     },
+//     countCell: {
+//         width: 80,
+//         alignItems: 'center',
+//     },
+//     amountCell: {
+//         width: 120,
+//         alignItems: 'flex-end',
+//     },
+//     totalCell: {
+//         width: 120,
+//         alignItems: 'flex-end',
+//     },
+//     dayCellText: {
+//         fontWeight: '500',
+//     },
+//     totalCellText: {
+//         fontWeight: '600',
+//     },
+//     tableFooter: {
+//         borderTopWidth: 1,
+//         borderTopColor: 'rgba(0,0,0,0.1)',
+//     },
+//     totalRowText: {
+//         fontWeight: '700',
+//         fontSize: 15,
+//     },
+//     grandTotalText: {
+//         fontWeight: '700',
+//         fontSize: 15,
+//     },
+//     summaryCard: {
+//         marginTop: 8,
+//     },
+//     summaryContent: {
+//         flexDirection: 'row',
+//         justifyContent: 'space-between',
+//         alignItems: 'center',
+//         marginBottom: 16,
+//     },
+//     summaryTextContainer: {
+//         flex: 1,
+//     },
+//     summaryTitle: {
+//         color: '#ffffff',
+//         fontSize: 16,
+//         fontWeight: '700',
+//         marginBottom: 4,
+//     },
+//     summaryDescription: {
+//         color: 'rgba(255,255,255,0.8)',
+//         fontSize: 14,
+//     },
+//     summaryAmount: {
+//         color: '#ffffff',
+//         fontSize: 20,
+//         fontWeight: '700',
+//     },
+//     shareButton: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'center',
+//         backgroundColor: 'rgba(255,255,255,0.2)',
+//         padding: 10,
+//         borderRadius: 8,
+//     },
+//     shareButtonText: {
+//         color: '#ffffff',
+//         marginLeft: 8,
+//         fontWeight: '600',
+//     },
+//     drawer: {
+//         position: 'absolute',
+//         top: 0,
+//         bottom: 0,
+//         width: 300,
+//         borderRightWidth: 1,
+//     },
+//     drawerHeader: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'space-between',
+//         padding: 16,
+//         borderBottomWidth: 1,
+//         borderBottomColor: 'rgba(0,0,0,0.1)',
+//     },
+//     drawerTitle: {
+//         fontSize: 16,
+//         fontWeight: '600',
+//     },
+//     emptyStateContainer: {
+//         flex: 1,
+//         alignItems: 'center',
+//         justifyContent: 'center',
+//         padding: 24,
+//     },
+//     emptyStateText: {
+//         marginTop: 16,
+//         fontSize: 16,
+//         textAlign: 'center',
+//     },
+//     savedCalculationItem: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'space-between',
+//         padding: 16,
+//         borderBottomWidth: 1,
+//     },
+//     savedCalcMain: {
+//         flex: 1,
+//     },
+//     savedCalcDate: {
+//         fontSize: 15,
+//         fontWeight: '600',
+//         marginBottom: 4,
+//     },
+//     savedCalcAmount: {
+//         fontSize: 16,
+//         fontWeight: '700',
+//         marginBottom: 4,
+//     },
+//     savedCalcDetails: {
+//         fontSize: 13,
+//     },
+//     deleteButton: {
+//         padding: 8,
+//     },
+//     currencyButton: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         paddingHorizontal: 12,
+//         paddingVertical: 6,
+//         borderRadius: 8,
+//     },
+//     currencyDropdown: {
+//         position: 'absolute',
+//         right: 16,
+//         top: 52,
+//         width: 200,
+//         maxHeight: 300,
+//         borderWidth: 1,
+//         borderRadius: 8,
+//         zIndex: 10,
+//         shadowColor: "#000",
+//         shadowOffset: {
+//             width: 0,
+//             height: 2,
+//         },
+//         shadowOpacity: 0.1,
+//         shadowRadius: 3.84,
+//         elevation: 5,
+//     },
+//     currencyItem: {
+//         flexDirection: 'row',
+//         justifyContent: 'space-between',
+//         padding: 12,
+//         borderBottomWidth: 1,
+//         borderBottomColor: 'rgba(0,0,0,0.1)',
+//     },
+// });
+
+// export default App;
